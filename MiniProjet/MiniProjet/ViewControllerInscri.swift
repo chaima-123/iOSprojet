@@ -6,15 +6,17 @@
 //
 
 import UIKit
+import Alamofire
 
 class CellClass: UITableViewCell {
     
 }
 
-class ViewControllerInscri: UIViewController, UITableViewDelegate, UITableViewDataSource
+class ViewControllerInscri: UIViewController, UIImagePickerControllerDelegate & UINavigationControllerDelegate
 {
     var dataSource = [String]()
     var address:String = ""
+    var test:Bool = false
 
     @IBOutlet weak var txtLastName: UITextField!
     
@@ -25,60 +27,208 @@ class ViewControllerInscri: UIViewController, UITableViewDelegate, UITableViewDa
     @IBOutlet weak var txtemail: UITextField!
     @IBOutlet weak var txtTel: UITextField!
         
-    @IBOutlet weak var adress: UIButton!
+    @IBOutlet weak var myView: UIView!
     
+   
+    @IBOutlet weak var btnInscri: UIButton!
+    
+    @IBOutlet weak var errorTel: UILabel!
+    
+    @IBOutlet weak var errorEmail: UILabel!
+    
+    @IBOutlet weak var errorMdp: UILabel!
+    
+    @IBOutlet weak var errorName: UILabel!
+    
+    @IBOutlet weak var errorMdp1: UILabel!
+    
+    @IBOutlet weak var errorMdp2: UILabel!
+    
+    @IBOutlet weak var errorPrenom: UILabel!
+    
+    @IBAction func btnSelectImage(_ sender: Any) {
+        
+        if UIImagePickerController.isSourceTypeAvailable(.photoLibrary)
+                {
+                    let myPickerController = UIImagePickerController()
+                    myPickerController.delegate = self;
+                    myPickerController.sourceType = .photoLibrary
+                    self.present(myPickerController, animated: true, completion: nil)
+                }
+    }
+    
+    public func validaPhoneNumber(phoneNumber: String) -> Bool {
+         let phoneNumberRegex = "^[259]\\d{7}$"
+         let trimmedString = phoneNumber.trimmingCharacters(in: .whitespaces)
+         let validatePhone = NSPredicate(format: "SELF MATCHES %@", phoneNumberRegex)
+         let isValidPhone = validatePhone.evaluate(with: trimmedString)
+         return isValidPhone
+      }
+      public func validateEmailId(emailID: String) -> Bool {
+         let emailRegEx = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
+         let trimmedString = emailID.trimmingCharacters(in: .whitespaces)
+         let validateEmail = NSPredicate(format:"SELF MATCHES %@", emailRegEx)
+         let isValidateEmail = validateEmail.evaluate(with: trimmedString)
+         return isValidateEmail
+      }
+    
+
+
+  
     
     @objc fileprivate func handleCreatePost() {
         print("Creating user")
+        if (( txtFirstName.text!.isEmpty) && ( txtLastName.text!.isEmpty) )
+             {
+                 errorName.isHidden = false
+                 errorName.text="Ce champ est obligatoire!"
+                 
+                 errorPrenom.isHidden = false
+                 errorPrenom.text="Ce champ est obligatoire!"
+
+            self.test = true
+
+             }
+             else{
+                 errorName.isHidden = true
+                 errorPrenom.isHidden = true
+                self.test = false
+
+             }
+             
+             
+                 if((txtTel.text!.isEmpty))
+                     {
+                    self.test = true
+
+                         errorTel.isHidden = false
+                     errorTel.text="Ce champ est obligatoire!"}
+                 
+                 else if( validaPhoneNumber(phoneNumber: txtTel.text!) == false)
+                 {
+                     errorTel.isHidden = false
+                     errorTel.text="Le numéro de téléphone doit se composé par 8 chiffres"
+                    self.test = true
+
+                }
+                 else
+                {
+                 errorTel.isHidden = true
+                    self.test = false
+
+                }
+             
+             
+             if((txtemail.text!.isEmpty))
+                 {
+                self.test = true
+
+                     errorEmail.isHidden = false
+                 errorEmail.text="Ce champ est obligatoire!"}
+             
+             else if(  validateEmailId(emailID: txtemail.text!) == false  )
+             {
+              /**/
+                self.test = true
+
+                 errorEmail.isHidden = false
+                 errorEmail.text=" Adresse E-mail invalide"
+                self.test = true
+
+                 
+             }
+             else
+            {
+             errorEmail.isHidden = true
+                self.test == false
+            }
         
-        Service.shared.createUser(firstName: txtFirstName.text!,
+
+        if(txtPassword.text!.isEmpty )
+        {
+            errorMdp1.isHidden = false
+            errorMdp1.text = "Ce champ est obligatoire!"
+            self.test = true
+        }
+        else {
+            errorMdp1.isHidden = true
+            self.test = false
+            
+        }
+        
+        if( txtConfPass.text!.isEmpty)
+        {
+        errorMdp2.isHidden = false
+        errorMdp2.text = "Ce champ est obligatoire!"
+        self.test = true
+
+        }
+        else if ( txtPassword.text! != txtConfPass.text!)
+        {
+            errorMdp2.isHidden = false
+            errorMdp2.text = "Mots de passe incompatibles"
+            self.test = true
+
+        }
+        else
+        {
+            errorMdp1.isHidden = true
+            errorMdp2.isHidden = true
+               self.test == false
+        }
+        
+        
+        
+        if(test == false)
+   {Service.shared.createUser(firstName: txtFirstName.text!,
                                 lastName: txtLastName.text!,
                                 email: txtemail.text!,
                                 tel : txtTel.text!,
-                                city: address) { (err) in
-            if let err = err {
-                print("Failed to create post object:", err)
-                return
-            }
+                                password: txtPassword.text!,
+                                city: address) { (res) in
+            switch res {
             
-            print("Finished creating user")
-         
+            case .failure(let err):
+                print("Failed to find user:", err
+                )
+
+            case .success(let user):
+                print(user)
+                self.toastMessage(user.message)
+                self.uploadImage(file:user._id)
+            }
         }
+            
+        
+        
+        Service.shared.lastRecord() { (res) in
+            switch res {
+            
+            case .failure(let err):
+                print("Failed to find user:", err
+                )
+
+            case .success(let userr):
+                self.uploadImage(file:userr._id)
+        }
+        }
+       // }
+   }
+        
     }
 
     @IBAction func subscribe(_ sender: Any) {
-        
+     
+      
         handleCreatePost()
     }
     
     
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-    
-        return dataSource.count
-    }
-    
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell
-    {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
-        cell.textLabel?.text = dataSource[indexPath.row]
-         return cell
-    }
-    
-    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-          return 50
-      }
-      
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-          selectedButton.setTitle(dataSource[indexPath.row], for: .normal)
-          removeTransparentView()
-        address = dataSource[indexPath.row]
 
-      }
-    
 
-    @IBOutlet weak var btnSelectVille: UIButton!
     
     
+    @IBOutlet weak var imgView: UIImageView!
     let transparentView = UIView()
     let tableView = UITableView()
     
@@ -87,54 +237,85 @@ class ViewControllerInscri: UIViewController, UITableViewDelegate, UITableViewDa
     override func viewDidLoad()
     {
         super.viewDidLoad()
-        tableView.delegate = self
-        tableView.dataSource = self
+  
         tableView.register(CellClass.self, forCellReuseIdentifier: "Cell")
-
-    }
-    
-    func addTransparentView(frames: CGRect) {
-        let window = UIApplication.shared.keyWindow
-        transparentView.frame = window?.frame ?? self.view.frame
-        self.view.addSubview(transparentView)
-
-        tableView.frame = CGRect(x: frames.origin.x, y: frames.origin.y + frames.height, width: frames.width, height: 0)
+        myView.applyGradient(colours: [.purple, .systemPurple])
+        myView.layer.masksToBounds = true
+        myView.layer.cornerRadius = 30
         
-        self.view.addSubview(tableView)
-        tableView.layer.cornerRadius = 5
-
-
-        transparentView.backgroundColor = UIColor.black.withAlphaComponent(0.9)
-        let tapgesture = UITapGestureRecognizer(target: self, action: #selector(removeTransparentView))
-
-        transparentView.addGestureRecognizer(tapgesture)
-        transparentView.alpha = 0
-        UIView.animate(withDuration: 0.4, delay: 0.0, usingSpringWithDamping: 1.0, initialSpringVelocity: 1.0, options: .curveEaseInOut, animations: {
-            self.transparentView.alpha = 0.5
-            self.tableView.frame = CGRect(x: frames.origin.x, y: frames.origin.y + frames.height + 5, width: frames.width, height:200)
-
-         
-        }, completion: nil)
+        btnInscri.applyGradient(colours: [.purple, .systemPurple])
+        btnInscri.layer.masksToBounds = true
+        btnInscri.layer.cornerRadius = 20
+    
     }
     
-    @objc func removeTransparentView() {
-        let frames = selectedButton.frame
 
-           UIView.animate(withDuration: 0.4, delay: 0.0, usingSpringWithDamping: 1.0, initialSpringVelocity: 1.0, options: .curveEaseInOut, animations: {
-               self.transparentView.alpha = 0
-               self.tableView.frame = CGRect(x: frames.origin.x, y: frames.origin.y + frames.height + 5, width: frames.width, height:0)
-           }, completion: nil)
+    
+    
+    
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any])
+       {
+           if let image = info[UIImagePickerController.InfoKey.originalImage] as? UIImage {
+               self.imgView.image = image
+           }else{
+               debugPrint("Something went wrong")
+           }
+           self.dismiss(animated: true, completion: nil)
        }
 
-    
-    
-    @IBAction func btnSelectVille(_ sender: Any) {
-        dataSource = ["Monastir", "sousse", "Mahdia", "Mahdia", "Mahdia", "Mahdia", "Mahdia"]
-        selectedButton = btnSelectVille
-        addTransparentView(frames: btnSelectVille.frame)
-    }
-    
+       func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+           picker.dismiss(animated: true, completion: nil)
+       }
     
 
+    
+    func uploadImage(file : String)
+   {
+       let headers: HTTPHeaders = [
+                   /* "Authorization": "your_access_token",  in case you need authorization header */
+                   "Content-type": "multipart/form-data"]
+
+                   AF.upload(
+                       multipartFormData: { multipartFormData in
+                           multipartFormData.append(self.imgView.image!.jpegData(compressionQuality: 0.5)!, withName: "upload" , fileName: file+".jpeg", mimeType: "image/jpeg")
+                   },
+                       to: "http://172.20.10.5:3000/upload", method: .post , headers: headers)
+                       .response
+                    { resp in
+                           print(resp)
+            }
+   }
+
+    
+    func toastMessage(_ message: String){
+        guard let window = UIApplication.shared.keyWindow else {return}
+        let messageLbl = UILabel()
+        messageLbl.text = message
+        messageLbl.textAlignment = .center
+        messageLbl.font = UIFont.systemFont(ofSize: 12)
+        messageLbl.textColor = .white
+        messageLbl.backgroundColor = UIColor(white: 0, alpha: 0.5)
+
+        let textSize:CGSize = messageLbl.intrinsicContentSize
+        let labelWidth = min(textSize.width, window.frame.width - 40)
+
+        messageLbl.frame = CGRect(x: 20, y: window.frame.height - 90, width: labelWidth + 30, height: textSize.height + 40)
+        messageLbl.center.x = window.center.x
+        messageLbl.layer.cornerRadius = messageLbl.frame.height/2
+        messageLbl.layer.masksToBounds = true
+        window.addSubview(messageLbl)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+
+        UIView.animate(withDuration: 1, animations: {
+            messageLbl.alpha = 0
+        }) { (_) in
+            messageLbl.removeFromSuperview()
+        }
+        }
+    }
+    
 }
+
+
 
